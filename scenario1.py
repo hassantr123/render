@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-VULNERABLE ENTERPRISE MCP SERVER (Streamable HTTP)
+VULNERABLE ENTERPRISE MCP SERVER (HTTP/SSE for cloud deployment)
 FOR AUTHORIZED SECURITY TESTING ONLY.
 
 Exposes tools:
@@ -9,14 +9,14 @@ Exposes tools:
 - export_data           (command injection via shell=True)
 - get_client_secrets    (IDOR: no auth on client_id)
 
-Transport: Streamable HTTP using FastMCP.
+Transport: HTTP/SSE using FastMCP (compatible with mcp==1.2.0).
 """
 
 import logging
 import sqlite3
 import subprocess
 import json
-import os                      # ⬅️ NEW for Render PORT
+import os
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -156,16 +156,17 @@ def create_test_files() -> None:
 
 
 # --------------------------------------------------------------------
-# FastMCP server over Streamable HTTP
+# FastMCP server over HTTP/SSE
 # --------------------------------------------------------------------
-# Render sets PORT in environment → use it instead of hardcoding 8000
-PORT = int(os.getenv("PORT", "8000"))
+
+# Render sets the port in the PORT env var; default to 10000 locally.
+PORT = int(os.environ.get("PORT", "10000"))
 
 mcp = FastMCP(
     name="quantum-financial-mcp",
     host="0.0.0.0",
     port=PORT,
-    stateless_http=True,  # fine for your FYP scenarios
+    stateless_http=True,  # exposes HTTP/SSE endpoints
 )
 
 
@@ -302,12 +303,13 @@ def main() -> None:
     init_database()
     create_test_files()
 
-    logger.info("🚀 Starting vulnerable MCP server over Streamable HTTP")
-    logger.info(f"📡 Listening on http://0.0.0.0:{PORT}/mcp")   # ⬅️ show real port
+    logger.info("🚀 Starting vulnerable MCP server over HTTP/SSE")
+    logger.info("📡 Listening on http://0.0.0.0:%s/mcp (Render PORT=%s)", PORT, PORT)
     logger.info("⚠️ FOR AUTHORIZED TESTING ONLY")
 
-    # This uses the official streamable HTTP transport.
-    mcp.run(transport="streamable-http")
+    # IMPORTANT: 'streamable-http' is NOT supported in mcp==1.2.0.
+    # Use 'sse' for HTTP/SSE transport.
+    mcp.run(transport="sse")
 
 
 if __name__ == "__main__":
